@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mezmo Replacement - Mail Server Logs</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0e27;
+      color: #e1e4e8;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    header {
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #30363d;
+    }
+    
+    h1 {
+      color: #58a6ff;
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+    
+    .stats {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .stat-card {
+      background: #161b22;
+      padding: 15px 20px;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #8b949e;
+      margin-bottom: 5px;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #58a6ff;
+    }
+    
+    .filters {
+      background: #161b22;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+      margin-bottom: 20px;
+    }
+    
+    .filter-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr auto;
+      gap: 15px;
+      align-items: end;
+    }
+    
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    label {
+      font-size: 12px;
+      color: #8b949e;
+      margin-bottom: 5px;
+    }
+    
+    input, select {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #e1e4e8;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: #58a6ff;
+    }
+    
+    button {
+      background: #238636;
+      color: white;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    button:hover {
+      background: #2ea043;
+    }
+    
+    .refresh-btn {
+      background: #1f6feb;
+    }
+    
+    .refresh-btn:hover {
+      background: #388bfd;
+    }
+    
+    .logs-container {
+      background: #161b22;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+      overflow: hidden;
+    }
+    
+    .log-entry {
+      padding: 15px 20px;
+      border-bottom: 1px solid #30363d;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+    }
+    
+    .log-entry:hover {
+      background: #0d1117;
+    }
+    
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+    
+    .log-header {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+    
+    .log-timestamp {
+      color: #8b949e;
+    }
+    
+    .log-hostname {
+      color: #79c0ff;
+      font-weight: 500;
+    }
+    
+    .log-app {
+      color: #a5d6ff;
+    }
+    
+    .severity-badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    
+    .severity-0 { background: #8b0000; } /* Emergency */
+    .severity-1 { background: #dc143c; } /* Alert */
+    .severity-2 { background: #ff6347; } /* Critical */
+    .severity-3 { background: #ff8c00; } /* Error */
+    .severity-4 { background: #ffa500; } /* Warning */
+    .severity-5 { background: #1f6feb; } /* Notice */
+    .severity-6 { background: #238636; } /* Info */
+    .severity-7 { background: #6e7681; } /* Debug */
+    
+    .log-message {
+      color: #e1e4e8;
+      line-height: 1.5;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #8b949e;
+    }
+    
+    .no-logs {
+      text-align: center;
+      padding: 40px;
+      color: #8b949e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📊 IceWarp Mail Server Logs</h1>
+      <p style="color: #8b949e;">Real-time syslog monitoring with 30-day retention</p>
+    </header>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">Total Logs</div>
+        <div class="stat-value" id="totalLogs">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Displayed</div>
+        <div class="stat-value" id="displayedLogs">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Auto-refresh</div>
+        <div class="stat-value" style="font-size: 16px;">Every 5s</div>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Search Message</label>
+          <input type="text" id="searchInput" placeholder="Search logs...">
+        </div>
+        <div class="filter-group">
+          <label>Severity</label>
+          <select id="severityFilter">
+            <option value="">All Severities</option>
+            <option value="0">Emergency</option>
+            <option value="1">Alert</option>
+            <option value="2">Critical</option>
+            <option value="3">Error</option>
+            <option value="4">Warning</option>
+            <option value="5">Notice</option>
+            <option value="6">Info</option>
+            <option value="7">Debug</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Hostname</label>
+          <select id="hostnameFilter">
+            <option value="all">All Hosts</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Application</label>
+          <select id="appNameFilter">
+            <option value="all">All Apps</option>
+          </select>
+        </div>
+        <button class="refresh-btn" onclick="loadLogs()">🔄 Refresh</button>
+      </div>
+    </div>
+
+    <div class="logs-container">
+      <div id="logsContent" class="loading">Loading logs...</div>
+    </div>
+  </div>
+
+  <script>
+    const severityNames = ['Emergency', 'Alert', 'Critical', 'Error', 'Warning', 'Notice', 'Info', 'Debug'];
+    
+    // Load stats
+    async function loadStats() {
+      try {
+        const response = await fetch('/api/stats');
+        const data = await response.json();
+        document.getElementById('totalLogs').textContent = data.totalLogs || 0;
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      }
+    }
+    
+    // Load filter options
+    async function loadFilters() {
+      try {
+        const [hostnames, appNames] = await Promise.all([
+          fetch('/api/hostnames').then(r => r.json()),
+          fetch('/api/appnames').then(r => r.json())
+        ]);
+        
+        const hostnameSelect = document.getElementById('hostnameFilter');
+        hostnames.forEach(host => {
+          const option = document.createElement('option');
+          option.value = host;
+          option.textContent = host;
+          hostnameSelect.appendChild(option);
+        });
+        
+        const appNameSelect = document.getElementById('appNameFilter');
+        appNames.forEach(app => {
+          const option = document.createElement('option');
+          option.value = app;
+          option.textContent = app;
+          appNameSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error('Error loading filters:', error);
+      }
+    }
+    
+    // Load logs
+    async function loadLogs() {
+      try {
+        const search = document.getElementById('searchInput').value;
+        const severity = document.getElementById('severityFilter').value;
+        const hostname = document.getElementById('hostnameFilter').value;
+        const appName = document.getElementById('appNameFilter').value;
+        
+        const params = new URLSearchParams();
+        if (search) params.append('search', search);
+        if (severity) params.append('severity', severity);
+        if (hostname !== 'all') params.append('hostname', hostname);
+        if (appName !== 'all') params.append('appName', appName);
+        
+        const response = await fetch(`/api/logs?${params}`);
+        const logs = await response.json();
+        
+        const logsContent = document.getElementById('logsContent');
+        
+        if (logs.length === 0) {
+          logsContent.innerHTML = '<div class="no-logs">No logs found matching your filters.</div>';
+          document.getElementById('displayedLogs').textContent = '0';
+          return;
+        }
+        
+        document.getElementById('displayedLogs').textContent = logs.length;
+        
+        logsContent.innerHTML = logs.map(log => {
+          const timestamp = new Date(log.received_at).toLocaleString();
+          return `
+            <div class="log-entry">
+              <div class="log-header">
+                <span class="log-timestamp">${timestamp}</span>
+                <span class="log-hostname">${log.hostname}</span>
+                <span class="log-app">${log.appName}</span>
+                <span class="severity-badge severity-${log.severity}">${severityNames[log.severity]}</span>
+                ${log.source_ip ? `<span style="color: #6e7681;">${log.source_ip}</span>` : ''}
+              </div>
+              <div class="log-message">${escapeHtml(log.message)}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Error loading logs:', error);
+        document.getElementById('logsContent').innerHTML = 
+          '<div class="no-logs">Error loading logs. Please check console.</div>';
+      }
+    }
+    
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    // Add event listeners for live filtering
+    document.getElementById('searchInput').addEventListener('input', loadLogs);
+    document.getElementById('severityFilter').addEventListener('change', loadLogs);
+    document.getElementById('hostnameFilter').addEventListener('change', loadLogs);
+    document.getElementById('appNameFilter').addEventListener('change', loadLogs);
+    
+    // Initial load
+    loadStats();
+    loadFilters();
+    loadLogs();
+    
+    // Auto-refresh every 5 seconds
+    setInterval(() => {
+      loadLogs();
+      loadStats();
+    }, 5000);
+  </script>
+</body>
+</html>
