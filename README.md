@@ -1,245 +1,212 @@
-# Mezmo Replacement - IceWarp Syslog Monitor
+# Mezmo - Railway Backend API
 
-A complete replacement for Mezmo subscription that receives syslog data from IceWarp mail server, stores it in Supabase with automatic 30-day retention, and provides a live search interface.
+A complete Node.js/Express backend API deployed on Railway with PostgreSQL database.
 
 ## Features
 
-✅ **Syslog Receiver** - Accepts RFC 5424 and legacy BSD syslog formats
-✅ **Supabase Storage** - All logs stored in cloud database
-✅ **30-Day Auto-Cleanup** - Automatic deletion of logs older than 30 days
-✅ **Live Search** - Real-time filtering and search capabilities
-✅ **Email Health Monitoring** - Track deliverability and server health
-✅ **Auto-Refresh** - Dashboard updates every 5 seconds
+- ✅ User authentication (Register/Login) with JWT
+- ✅ Protected routes with token authentication
+- ✅ PostgreSQL database with Railway
+- ✅ RESTful API design
+- ✅ CORS enabled
+- ✅ Environment variable configuration
+- ✅ Production-ready error handling
 
-## Architecture
+## Tech Stack
 
-```
-IceWarp Mail Server  →  UDP Syslog (Port 514)  →  syslog-receiver.js
-                                                          ↓
-                                                    Supabase Database
-                                                          ↓
-                                                    Web Dashboard
-                                                  (server.js + frontend)
-```
+- **Runtime**: Node.js 18+
+- **Framework**: Express.js
+- **Database**: PostgreSQL (Railway)
+- **Authentication**: JWT + bcrypt
+- **Deployment**: Railway
 
-## Setup Instructions
-
-### 1. Database Setup
-
-1. Go to your Supabase project: https://arrvrciylzzcwhbkxwyc.supabase.co
-2. Open SQL Editor
-3. Run the contents of `database-setup.sql`
-4. This creates:
-   - `syslog_messages` table
-   - Indexes for fast searching
-   - Auto-cleanup function for 30-day retention
-
-### 2. Environment Configuration
-
-Update your `.env` file with your Supabase credentials:
-
-```env
-SUPABASE_URL=https://arrvrciylzzcwhbkxwyc.supabase.co
-SUPABASE_ANON_KEY=your_anon_key_here
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
-SYSLOG_PORT=514
-PORT=3000
-```
-
-**Important:** Get your `SUPABASE_SERVICE_ROLE_KEY` from:
-Supabase Dashboard → Settings → API → service_role (secret)
-
-### 3. Install Dependencies
-
-```bash
-npm install
-```
-
-### 4. Start the Services
-
-You need to run TWO processes:
-
-**Terminal 1 - Syslog Receiver:**
-```bash
-sudo node syslog-receiver.js
-```
-(Requires sudo because port 514 is privileged)
-
-**Terminal 2 - Web Dashboard:**
-```bash
-npm start
-```
-
-### 5. Configure IceWarp
-
-1. Open IceWarp Administration Console
-2. Navigate to: **System → Logging → General**
-3. Enable "Send logs to external syslog server"
-4. Enter:
-   - **IP Address:** (your server's IP - shown when syslog-receiver starts)
-   - **Port:** 514
-   - **Protocol:** UDP
-
-## Usage
-
-### Access Dashboard
-
-Open browser to: **http://localhost:3000**
-
-### Search Features
-
-- **Text Search:** Search across all log messages
-- **Severity Filter:** Filter by log level (Emergency, Alert, Critical, Error, Warning, Notice, Info, Debug)
-- **Hostname Filter:** Filter by specific mail server
-- **Application Filter:** Filter by service (SMTP, IMAP, etc.)
-- **Auto-refresh:** Dashboard updates every 5 seconds
-
-### Monitoring Email Health
-
-The dashboard helps you monitor:
-- **Email Deliverability:** Track successful/failed deliveries
-- **Server Errors:** Catch critical issues immediately
-- **Authentication:** Monitor login attempts
-- **Performance:** Watch for slow responses
-
-## Data Retention
-
-Logs are automatically deleted after 30 days using a database trigger. No manual cleanup needed!
-
-## Syslog Format Reference
-
-The system handles both RFC 5424 (modern) and RFC 3164 (legacy) formats:
-
-**RFC 5424 Format:**
-```
-<34>1 2025-01-10T12:00:00.000Z mail.example.com smtp 1234 MSGID - Message text
-```
-
-**Legacy BSD Format:**
-```
-<34>Jan 10 12:00:00 mail.example.com smtp: Message text
-```
-
-### Severity Levels
-
-| Level | Name      | Description           |
-|-------|-----------|-----------------------|
-| 0     | Emergency | System unusable       |
-| 1     | Alert     | Immediate action      |
-| 2     | Critical  | Critical conditions   |
-| 3     | Error     | Error conditions      |
-| 4     | Warning   | Warning conditions    |
-| 5     | Notice    | Normal but significant|
-| 6     | Info      | Informational         |
-| 7     | Debug     | Debug messages        |
-
-## Files Structure
+## Project Structure
 
 ```
 mezmo/
-├── .env                    # Environment configuration
-├── package.json            # Node.js dependencies
-├── syslog-receiver.js      # UDP syslog server
-├── server.js               # Web dashboard API
-├── database-setup.sql      # Supabase table setup
-├── public/
-│   └── index.html         # Web interface
-└── README.md              # This file
-```
+├── config/
+│   └── database.js         # PostgreSQL connection config
+├── database/
+│   └── schema.sql          # Database schema
+├── middleware/
+│   └── auth.js             # JWT authentication middleware
+├── routes/
+│   ├── auth.js             # Auth routes (register/login)
+│   ├── users.js            # User profile routes
+│   └── data.js             # Data CRUD routes
+├── .env                    # Environment variables
+├── .gitignore
+├── server.js               # Main application entry
+├── package.json
+└── railway.json            # Railway deployment config
 
-## Production Deployment
+## API Endpoints
 
-### Run as System Services
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login user
 
-**Create systemd service for syslog receiver:**
+### Users (Protected)
+- `GET /api/users/me` - Get current user profile
+- `PUT /api/users/me` - Update user profile
+
+### Data (Protected)
+- `GET /api/data` - Get all data items for user
+- `GET /api/data/:id` - Get single data item
+- `POST /api/data` - Create new data item
+- `PUT /api/data/:id` - Update data item
+- `DELETE /api/data/:id` - Delete data item
+
+### Health Check
+- `GET /health` - Server health status
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 18+ installed
+- PostgreSQL installed locally (or use Railway's database)
+
+### Setup
+
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+2. **Configure environment variables**
+   - Copy `.env` and update with your values
+   - For local PostgreSQL: `DATABASE_URL=postgresql://user:password@localhost:5432/mezmo`
+   - Generate JWT secret: `openssl rand -base64 32`
+
+3. **Initialize database**
+   ```bash
+   # Connect to your PostgreSQL and run:
+   psql -U your_user -d your_database -f database/schema.sql
+   ```
+
+4. **Start development server**
+   ```bash
+   npm run dev
+   ```
+
+   Server runs on `http://localhost:3000`
+
+## Deploy to Railway
+
+### Step 1: Create Railway Account
+1. Go to [railway.app](https://railway.app)
+2. Sign up with GitHub
+
+### Step 2: Deploy from GitHub
+
+1. Click "New Project" in Railway dashboard
+2. Select "Deploy from GitHub repo"
+3. Choose your `mezmo` repository
+4. Railway will auto-detect it's a Node.js project
+
+### Step 3: Add PostgreSQL Database
+1. In your Railway project, click "+ New"
+2. Select "Database" → "PostgreSQL"
+3. Railway automatically creates `DATABASE_URL` environment variable
+
+### Step 4: Set Environment Variables
+1. Go to your service → "Variables" tab
+2. Add these variables:
+   ```
+   JWT_SECRET=your-generated-secret-key
+   NODE_ENV=production
+   FRONTEND_URL=https://your-frontend-domain.com
+   ```
+
+### Step 5: Initialize Database Schema
+1. In Railway, go to PostgreSQL service
+2. Click "Data" tab
+3. Click "Query" and paste contents of `database/schema.sql`
+4. Execute the query
+
+### Step 6: Deploy
+- Railway automatically deploys on git push
+- Get your public URL from the "Settings" tab
+- Test with: `https://your-app.railway.app/health`
+
+## Usage Examples
+
+### Register User
 ```bash
-sudo nano /etc/systemd/system/mezmo-syslog.service
+curl -X POST https://your-app.railway.app/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "securepassword",
+    "name": "John Doe"
+  }'
 ```
 
-```ini
-[Unit]
-Description=Mezmo Syslog Receiver
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/Users/pio/Documents/ETWebsite/usersonmail/mezmo
-ExecStart=/usr/bin/node syslog-receiver.js
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**Create systemd service for web dashboard:**
+### Login
 ```bash
-sudo nano /etc/systemd/system/mezmo-web.service
+curl -X POST https://your-app.railway.app/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "securepassword"
+  }'
 ```
 
-```ini
-[Unit]
-Description=Mezmo Web Dashboard
-After=network.target
-
-[Service]
-Type=simple
-User=pio
-WorkingDirectory=/Users/pio/Documents/ETWebsite/usersonmail/mezmo
-ExecStart=/usr/bin/node server.js
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**Enable and start services:**
+### Get User Profile (Protected)
 ```bash
-sudo systemctl enable mezmo-syslog
-sudo systemctl enable mezmo-web
-sudo systemctl start mezmo-syslog
-sudo systemctl start mezmo-web
+curl https://your-app.railway.app/api/users/me \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-## Troubleshooting
-
-### Port 514 Permission Denied
+### Create Data Item (Protected)
 ```bash
-# Option 1: Run with sudo
-sudo node syslog-receiver.js
-
-# Option 2: Use port > 1024 (e.g., 5140)
-# Update .env: SYSLOG_PORT=5140
-# Configure IceWarp to use port 5140
+curl -X POST https://your-app.railway.app/api/data \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "title": "My First Item",
+    "content": "This is the content"
+  }'
 ```
 
-### No Logs Appearing
-1. Check syslog receiver is running: `ps aux | grep syslog-receiver`
-2. Verify IceWarp configuration
-3. Check firewall allows UDP port 514
-4. Test with: `logger -n localhost -P 514 "Test message"`
+## Environment Variables Reference
 
-### Database Connection Issues
-1. Verify `.env` credentials
-2. Check Supabase project is active
-3. Run database setup SQL if not done
+| Variable | Description | Required | Example |
+|----------|-------------|----------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | Yes | Auto-set by Railway |
+| `JWT_SECRET` | Secret key for JWT tokens | Yes | Random 32-char string |
+| `PORT` | Server port | No | 3000 (Railway sets this) |
+| `NODE_ENV` | Environment mode | No | production |
+| `FRONTEND_URL` | Frontend domain for CORS | No | Your frontend URL |
 
-## Future Enhancements
+## Database Schema
 
-Ideas for additional features:
-- Email alerts for critical errors
-- Historical analytics and graphs
-- Export logs to CSV
-- Advanced regex search
-- Log pattern detection
-- Integration with monitoring tools
+### Users Table
+- `id` - Serial primary key
+- `email` - Unique email address
+- `password` - Bcrypt hashed password
+- `name` - User's name (optional)
+- `created_at` - Registration timestamp
+- `updated_at` - Last update timestamp
+
+### Data Table
+- `id` - Serial primary key
+- `user_id` - Foreign key to users
+- `title` - Data item title
+- `content` - Data item content (text)
+- `created_at` - Creation timestamp
+- `updated_at` - Last update timestamp
+
+## Security Features
+
+- Password hashing with bcrypt (10 rounds)
+- JWT token authentication
+- Protected routes with middleware
+- SQL injection prevention with parameterized queries
+- CORS configuration
+- Environment variable security
 
 ## License
 
 MIT
-
-## Support
-
-For issues or questions, check:
-- IceWarp documentation: https://docs.icewarp.com
-- Supabase documentation: https://supabase.com/docs
